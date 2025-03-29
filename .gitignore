@@ -1,0 +1,39 @@
+# -----------------------------
+# Android/Gradle & Build Files
+# -----------------------------
+.gradle/
+**/build/
+**/captures/
+.externalNativeBuild/
+.cxx/
+
+# -----------------------------
+# Android Studio/IntelliJ Files
+# -----------------------------
+*.iml
+.idea/
+.idea/caches
+.idea/libraries
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# -----------------------------
+# Local Configuration
+# -----------------------------
+local.properties
+/local.properties
+
+# -----------------------------
+# OS-specific & Misc
+# -----------------------------
+.DS_Store
+*.log
+
+# -----------------------------
+# APK/Bundle Artifacts
+# -----------------------------
+*.apk
+*.ap_
+*.aab
