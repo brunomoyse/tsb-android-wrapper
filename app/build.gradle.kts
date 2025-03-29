@@ -96,6 +96,8 @@ dependencies {
     // Sunmi Printer Library dependency
     implementation("com.sunmi:printerlibrary:1.0.15")
 
+    // To encode/decode JSON
+    implementation(libs.gson)
 
     // To store secrets
     implementation(libs.androidx.security.crypto)

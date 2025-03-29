@@ -37,3 +37,4 @@ local.properties
 *.apk
 *.ap_
 *.aab
+.kotlin/sessions/
