@@ -1,6 +1,9 @@
 package com.brunomoyse.tokyosushibar.ui.printing
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.util.Log
 import android.webkit.JavascriptInterface
 import com.google.gson.Gson
@@ -24,6 +27,9 @@ data class Product(
 class PrintHandler(private val context: Context) {
     private var service: SunmiPrinterService? = null
     private val TAG = "PrintHandler"
+
+    // Printer paper width in pixels (384px for 58mm paper)
+    private val printerWidthPx = 384
 
     private val printerCallback = object : InnerPrinterCallback() {
         override fun onConnected(service: SunmiPrinterService?) {
@@ -80,9 +86,7 @@ class PrintHandler(private val context: Context) {
                 return
             }
 
-            // Ensure printer service is connected
-            val printerService = service
-            if (printerService == null) {
+            val printerService = service ?: run {
                 Log.e(TAG, "Printer service is not connected")
                 return
             }
@@ -90,27 +94,22 @@ class PrintHandler(private val context: Context) {
             // Initialize printer
             printerService.printerInit(printCallback)
 
-            // Print main header (only once)
+            // Print logo first (centered)
+            printLogo(printerService)
+
+            // Print header
             printerService.printText(formatHeader(), printCallback)
 
-            // Group order lines by product category
+            // Process order lines
             val grouped = orderLines.groupBy { it.product.categoryName }
             var grandTotal = 0.0
 
             for ((category, lines) in grouped) {
-                // Print category header centered with stars
                 printerService.printText(createCategoryHeader(category, 32), printCallback)
 
-                // Sort products by code: first by letters, then by number.
                 val sortedLines = lines.sortedWith(compareBy(
-                    {
-                        val regex = Regex("([A-Za-z]+)")
-                        regex.find(it.product.code)?.groupValues?.get(1) ?: it.product.code
-                    },
-                    {
-                        val regex = Regex("[A-Za-z]+([0-9]+)")
-                        regex.find(it.product.code)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                    }
+                    { it.product.code.substringBeforeLast(" ").lowercase() },
+                    { it.product.code.substringAfterLast(" ").toIntOrNull() ?: 0 }
                 ))
 
                 for (line in sortedLines) {
@@ -123,18 +122,87 @@ class PrintHandler(private val context: Context) {
                     printerService.printText(row, printCallback)
                     grandTotal += line.totalPrice
                 }
-                // Extra line feed after each category group
                 printerService.lineWrap(1, printCallback)
             }
 
-            // Print footer with properly aligned total
+            // Print footer with total
             printerService.printText(formatFooter(grandTotal), printCallback)
 
-            // Feed extra lines and cut paper
+            // Finalize
             printerService.lineWrap(3, printCallback)
             printerService.cutPaper(printCallback)
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing JSON or printing: ${e.message}")
+        }
+    }
+
+    private fun printLogo(printerService: SunmiPrinterService) {
+        try {
+            val logoBitmap = loadAndScaleLogo() ?: return
+
+            // Center alignment using ESC commands
+            val centerAlign = byteArrayOf(0x1B, 0x61, 0x01) // ESC a n (n=1 for center)
+            val leftAlign = byteArrayOf(0x1B, 0x61, 0x00)  // ESC a n (n=0 for left)
+
+            // Set alignment
+            printerService.sendRAWData(centerAlign, printCallback)
+
+            // Print logo
+            printerService.printBitmap(logoBitmap, printCallback)
+
+            // Reset alignment
+            printerService.sendRAWData(leftAlign, printCallback)
+            printerService.lineWrap(2, printCallback)
+
+            logoBitmap.recycle()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error printing logo", e)
+        }
+    }
+
+    private fun loadAndScaleLogo(): Bitmap? {
+        return try {
+            // Get resources from context
+            val resources = context.resources
+
+            // Get package name
+            val packageName = context.packageName
+
+            // Get resource ID dynamically
+            val resId = resources.getIdentifier(
+                "app_logo",
+                "drawable",
+                packageName
+            )
+
+            if (resId == 0) {
+                Log.e(TAG, "Logo resource not found")
+                return null
+            }
+
+            val originalBitmap = BitmapFactory.decodeResource(
+                resources,
+                resId
+            ) ?: return null
+
+            // Scaling logic (same as before)
+            val maxWidth = 384f
+            val scale = maxWidth / originalBitmap.width
+            val matrix = Matrix().apply { postScale(scale, scale) }
+
+            Bitmap.createBitmap(
+                originalBitmap,
+                0, 0,
+                originalBitmap.width,
+                originalBitmap.height,
+                matrix,
+                true
+            ).also {
+                originalBitmap.recycle()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading logo: ${e.message}")
+            null
         }
     }
 
@@ -152,14 +220,13 @@ class PrintHandler(private val context: Context) {
     private fun formatProductLine(code: String, name: String, quantity: Int, price: Double): String {
         return formatRow(
             code = code,
-            name = name.take(16), // Limit name to 16 chars
+            name = name.take(16),
             qty = quantity.toString(),
             price = String.format("%.2f", price).replace('.', ',')
         )
     }
 
     private fun formatRow(code: String, name: String, qty: String, price: String): String {
-        // Fixed column widths: Code:5, Nom:16, Qté:4, Prix:7 (total 32 chars)
         return String.format("%-5s%-16s%4s%7s\n",
             code.take(5),
             name.take(16),
