@@ -93,8 +93,9 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    implementation(libs.androidx.webkit)
     // Sunmi Printer Library dependency
-    implementation("com.sunmi:printerlibrary:1.0.23")
+    implementation(libs.printerlibrary)
 
     // To encode/decode JSON
     implementation(libs.gson)

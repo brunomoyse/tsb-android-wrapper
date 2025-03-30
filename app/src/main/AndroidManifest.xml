@@ -13,6 +13,9 @@
     </queries>
 
     <application
+        android:hardwareAccelerated="true"
+        android:largeHeap="true"
+        android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -22,6 +25,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.OrderWrapper"
         tools:targetApi="31">
+        <meta-data
+            android:name="android.webkit.WebView.EnableSafeBrowsing"
+            android:value="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
