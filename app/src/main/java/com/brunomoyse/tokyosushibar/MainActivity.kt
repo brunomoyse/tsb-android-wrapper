@@ -8,6 +8,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
 import com.brunomoyse.tokyosushibar.ui.printing.PrintHandler
+import com.brunomoyse.tokyosushibar.ui.sound.SoundHandler
 
 class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -85,5 +86,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.addJavascriptInterface(PrintHandler(this), "PrintHandler")
+        webView.addJavascriptInterface(SoundHandler(this), "SoundHandler")
     }
 }
