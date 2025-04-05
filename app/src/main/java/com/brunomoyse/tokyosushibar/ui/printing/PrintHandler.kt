@@ -6,9 +6,11 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.util.Log
 import android.webkit.JavascriptInterface
+import com.brunomoyse.tokyosushibar.R
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.sunmi.peripheral.printer.*
+import java.util.Locale
 
 data class OrderProductLine(
     val product: Product,
@@ -19,7 +21,7 @@ data class OrderProductLine(
 
 data class Product(
     val id: String,
-    val code: String,
+    val code: String?,
     val name: String,
     val categoryName: String
 )
@@ -108,13 +110,13 @@ class PrintHandler(private val context: Context) {
                 printerService.printText(createCategoryHeader(category, 32), printCallback)
 
                 val sortedLines = lines.sortedWith(compareBy(
-                    { it.product.code.substringBeforeLast(" ").lowercase() },
-                    { it.product.code.substringAfterLast(" ").toIntOrNull() ?: 0 }
+                    { (it.product.code ?: "").substringBeforeLast(" ").lowercase() },
+                    { (it.product.code ?: "").substringAfterLast(" ").toIntOrNull() ?: 0 }
                 ))
 
                 for (line in sortedLines) {
                     val row = formatProductLine(
-                        code = line.product.code,
+                        code = line.product.code ?: "",
                         name = line.product.name,
                         quantity = line.quantity,
                         price = line.totalPrice
@@ -165,15 +167,8 @@ class PrintHandler(private val context: Context) {
             // Get resources from context
             val resources = context.resources
 
-            // Get package name
-            val packageName = context.packageName
-
             // Get resource ID dynamically
-            val resId = resources.getIdentifier(
-                "app_logo",
-                "drawable",
-                packageName
-            )
+            val resId = R.drawable.app_logo
 
             if (resId == 0) {
                 Log.e(TAG, "Logo resource not found")
@@ -212,9 +207,9 @@ class PrintHandler(private val context: Context) {
     }
 
     private fun formatFooter(total: Double): String {
-        val formattedTotal = String.format("%7.2f", total).replace('.', ',')
+        val formattedTotal = String.format(Locale("fr", "BE"), "%7.2f", total).replace('.', ',')
         return "--------------------------------\n" +
-                String.format("%-25s%s\n", "TOTAL:", formattedTotal)
+                String.format(Locale("fr", "BE"), "%-25s%s\n", "TOTAL:", formattedTotal)
     }
 
     private fun formatProductLine(code: String, name: String, quantity: Int, price: Double): String {
@@ -222,7 +217,7 @@ class PrintHandler(private val context: Context) {
             code = code,
             name = name.take(16),
             qty = quantity.toString(),
-            price = String.format("%.2f", price).replace('.', ',')
+            price = String.format(Locale("fr", "BE"), "%.2f", price).replace('.', ',')
         )
     }
 
