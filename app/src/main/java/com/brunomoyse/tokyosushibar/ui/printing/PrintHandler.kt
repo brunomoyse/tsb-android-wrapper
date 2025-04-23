@@ -23,7 +23,12 @@ data class Product(
     val id: String,
     val code: String?,
     val name: String,
-    val categoryName: String
+    val category: Category
+)
+
+data class Category(
+    val id: String,
+    val name: String
 )
 
 class PrintHandler(private val context: Context) {
@@ -103,7 +108,7 @@ class PrintHandler(private val context: Context) {
             printerService.printText(formatHeader(), printCallback)
 
             // Process order lines
-            val grouped = orderLines.groupBy { it.product.categoryName }
+            val grouped = orderLines.groupBy { it.product.category.name }
             var grandTotal = 0.0
 
             for ((category, lines) in grouped) {
