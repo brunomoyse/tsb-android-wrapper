@@ -1,5 +1,9 @@
 package com.brunomoyse.tokyosushibar
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkRequest
 import android.os.Bundle
 import android.util.Log
 import android.webkit.WebChromeClient
@@ -14,30 +18,43 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private val TAG = "MainActivity"
 
+    private lateinit var connectivityManager: ConnectivityManager
+    private lateinit var networkCallback: ConnectivityManager.NetworkCallback
+
     override fun onCreate(savedInstanceState: Bundle?) {
         WebView.setWebContentsDebuggingEnabled(true)
-
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE)
+                as ConnectivityManager
+        networkCallback = object : ConnectivityManager.NetworkCallback() {
+            override fun onLost(network: Network) {
+                super.onLost(network)
+                Log.w(TAG, "Network lost – closing app")
+                runOnUiThread { finish() }
+            }
+        }
+        connectivityManager.registerNetworkCallback(
+            NetworkRequest.Builder().build(),
+            networkCallback
+        )
+        // ────────────────────────────────────────────────────────────────────
+
         val email = BuildConfig.DEFAULT_EMAIL
         val password = BuildConfig.DEFAULT_PASSWORD
-
         Log.d(TAG, "Email: $email, Password: $password")
 
         webView = findViewById(R.id.webView)
-        val webSettings: WebSettings = webView.settings
-        webSettings.javaScriptEnabled = true
-
-        webSettings.cacheMode = WebSettings.LOAD_NO_CACHE
+        webView.settings.apply {
+            javaScriptEnabled = true
+            cacheMode        = WebSettings.LOAD_NO_CACHE
+        }
         webView.clearCache(true)
-
         webView.webChromeClient = WebChromeClient()
 
-        // Load your dashboard URL
         webView.loadUrl("https://admin.nuagemagique.dev/orders")
 
-        // Autofill and simulate login after login page loads
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
@@ -45,7 +62,6 @@ class MainActivity : AppCompatActivity() {
 
                 if (url.contains("login")) {
                     Log.d(TAG, "Login page detected, injecting script")
-
                     val script = """
                         (function() {
                             const emailField = document.querySelector('input[name="email"], input[type="email"]');
@@ -55,29 +71,17 @@ class MainActivity : AppCompatActivity() {
                             if (emailField && passwordField && submitBtn) {
                                 emailField.value = "$email";
                                 passwordField.value = "$password";
-                    
                                 emailField.dispatchEvent(new Event('input', { bubbles: true }));
                                 passwordField.dispatchEvent(new Event('input', { bubbles: true }));
-                    
-                                emailField.focus();
-                                passwordField.focus();
-                                
-                                // Small timeout before clicking the button to let the form react
                                 setTimeout(() => {
                                     submitBtn.click();
-                                    console.log("✅ Login form submitted");
+                                    console.log("Login form submitted");
                                 }, 0);
-                    
-                                submitBtn.click();
-                                console.log("✅ Form filled and submitted immediately.");
                             } else {
-                                console.log("❌ One or more elements not found. Script ran without retry.");
+                                console.log("Login form elements not found");
                             }
-                    
-                            return "🚀 Login script executed once";
                         })();
                     """.trimIndent()
-
                     view.evaluateJavascript(script) { result ->
                         Log.d(TAG, "JS result: $result")
                     }
@@ -87,5 +91,10 @@ class MainActivity : AppCompatActivity() {
 
         webView.addJavascriptInterface(PrintHandler(this), "PrintHandler")
         webView.addJavascriptInterface(SoundHandler(this), "SoundHandler")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        connectivityManager.unregisterNetworkCallback(networkCallback)
     }
 }

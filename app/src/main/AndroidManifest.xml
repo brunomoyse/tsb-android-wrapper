@@ -4,6 +4,8 @@
 
     <!-- Allow the app to access the Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Allow the app to check network connectivity state -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="sunmi.permission.PRINTER" />
 
