@@ -70,6 +70,8 @@ data class Order(
     val payment: Payment?,
     val address: Address?,
     val addressExtra: String?,
+    val deliveryFee: String?,
+    val discountAmount: String?,
     val items: List<OrderProductLine>
 )
 
@@ -137,9 +139,6 @@ class PrintHandler(private val context: Context) {
             printLogo(printer)
 
             // --- Order header ---
-            // printer.printText("Commande n°${order.id}\n", printCallback)
-
-
             printer.printText("Type: ${mapOrderType(order.type)}\n", printCallback)
             val paymentStatus = order.payment?.status ?: "NON PAYÉ"
             printer.printText("Paiement: $paymentStatus\n", printCallback)
@@ -160,10 +159,7 @@ class PrintHandler(private val context: Context) {
 
             // --- Address (if any) ---
             order.address?.let { addr ->
-                // Label
                 printer.printText("Adresse de livraison:\n", printCallback)
-
-                // street + optional box
                 val streetLine = buildString {
                     append(addr.streetName)
                     append(" ")
@@ -173,16 +169,11 @@ class PrintHandler(private val context: Context) {
                     }
                 }
                 wrapText(streetLine).forEach { printer.printText("$it\n", printCallback) }
-
-                // postcode + city
                 val cityLine = "${addr.postcode} ${addr.municipalityName}"
                 wrapText(cityLine).forEach { printer.printText("$it\n", printCallback) }
-
-                // now print addressExtra if present
                 order.addressExtra
                     ?.takeIf(String::isNotBlank)
                     ?.let { extra ->
-                        // maybe label, or just the extra lines:
                         wrapText(extra).forEach { line ->
                             printer.printText("$line\n", printCallback)
                         }
@@ -213,6 +204,36 @@ class PrintHandler(private val context: Context) {
                     }
                     printer.lineWrap(1, printCallback)
                 }
+
+            // --- Subtotal ---
+            printer.printText(
+                String.format(Locale("fr", "BE"), "%-25s%s\n",
+                    "Sous-total:",
+                    String.format(Locale("fr", "BE"), "%7.2f", grandTotal).replace('.', ',')
+                ),
+                printCallback
+            )
+            printer.lineWrap(1, printCallback)
+
+            // --- Delivery fee and reduction ---
+            order.deliveryFee?.takeIf(String::isNotBlank)?.let { feeStr ->
+                val fee = feeStr.toDoubleOrNull() ?: 0.0
+                val fmtFee = String.format(Locale("fr", "BE"), "%7.2f", fee).replace('.', ',')
+                printer.printText(
+                    String.format(Locale("fr", "BE"), "%-25s%s\n", "Frais de livraison:", fmtFee),
+                    printCallback
+                )
+                grandTotal += fee
+            }
+            order.discountAmount?.takeIf(String::isNotBlank)?.let { discStr ->
+                val disc = discStr.toDoubleOrNull() ?: 0.0
+                val fmtDisc = String.format(Locale("fr", "BE"), "%7.2f", disc).replace('.', ',')
+                printer.printText(
+                    String.format(Locale("fr", "BE"), "%-25s-%s\n", "Réduction:", fmtDisc),
+                    printCallback
+                )
+                grandTotal -= disc
+            }
 
             // --- Footer total ---
             printer.printText(formatFooter(grandTotal), printCallback)
