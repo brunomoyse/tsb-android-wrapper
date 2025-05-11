@@ -61,6 +61,12 @@ data class Address(
     val municipalityName: String
 )
 
+// Represents free extras like chopsticks or sauces
+data class OrderExtra(
+    val name: String,
+    val options: List<String>?
+)
+
 data class Order(
     val id: String,
     val createdAt: String,
@@ -72,6 +78,7 @@ data class Order(
     val addressExtra: String?,
     val deliveryFee: String?,
     val discountAmount: String?,
+    val orderExtra: List<OrderExtra>?,
     val items: List<OrderProductLine>
 )
 
@@ -204,6 +211,39 @@ class PrintHandler(private val context: Context) {
                     }
                     printer.lineWrap(1, printCallback)
                 }
+
+            // --- Extras gratuits (if any) ---
+            order.orderExtra?.takeIf { it.isNotEmpty() }?.let { extras ->
+                printer.printText(createCategoryHeader("Extras gratuits"), printCallback)
+                extras.forEach { extra ->
+                    if (extra.options.isNullOrEmpty()) {
+                        val label = when (extra.name.lowercase(Locale.getDefault())) {
+                            "chopsticks" -> "Baguettes"
+                            else -> extra.name
+                        }
+                        printer.printText(
+                            String.format(Locale("fr", "BE"), "%-25s%s\n", label, "Gratuit"),
+                            printCallback
+                        )
+                    } else {
+                        extra.options.forEach { opt ->
+                            val label = when (extra.name.lowercase(Locale.getDefault())) {
+                                "sauces" -> when (opt.lowercase(Locale.getDefault())) {
+                                    "sweet" -> "Sauce soja sucrée"
+                                    "salty" -> "Sauce soja salée"
+                                    else -> opt
+                                }
+                                else -> "${extra.name} $opt"
+                            }
+                            printer.printText(
+                                String.format(Locale("fr", "BE"), "%-25s%s\n", label, "Gratuit"),
+                                printCallback
+                            )
+                        }
+                    }
+                }
+                printer.lineWrap(1, printCallback)
+            }
 
             // --- Subtotal ---
             printer.printText(
